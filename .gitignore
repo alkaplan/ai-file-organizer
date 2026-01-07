@@ -3,5 +3,14 @@
 triage/*
 !triage/.gitkeep
 
+# Category folders (user files)
+finance/
+personal/
+projects/
+work/
+
+# Any other category folders users create
+# (gitignore doesn't auto-catch new folders, but we commit selectively)
+
 # macOS
 .DS_Store
