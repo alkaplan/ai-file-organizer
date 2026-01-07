@@ -1,0 +1,7 @@
+# User data
+.filemanager/index.md
+triage/*
+!triage/.gitkeep
+
+# macOS
+.DS_Store
