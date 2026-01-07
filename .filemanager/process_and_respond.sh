@@ -6,7 +6,37 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BASE_DIR="$(dirname "$SCRIPT_DIR")"
 FILENAME="$1"
 TRIAGE_DIR="$BASE_DIR/triage"
-INDEX_FILE="$SCRIPT_DIR/index.md"
+ROOT_INDEX="$SCRIPT_DIR/index.md"
+MANUAL_REVIEW_DIR="$BASE_DIR/manual-review"
+
+# Sensitive file patterns - these skip Claude and go to manual-review
+SENSITIVE_PATTERNS=(
+    "*passport*"
+    "*ssn*"
+    "*social_security*"
+    "*tax_return*"
+    "*w2*"
+    "*1099*"
+    "*bank_statement*"
+    "*private_key*"
+    "*credentials*"
+    "*.pem"
+    "*.key"
+)
+
+# Check if filename matches any sensitive pattern
+FILENAME_LOWER=$(echo "$FILENAME" | tr '[:upper:]' '[:lower:]')
+for pattern in "${SENSITIVE_PATTERNS[@]}"; do
+    if [[ "$FILENAME_LOWER" == $pattern ]]; then
+        # Move to manual-review instead
+        mkdir -p "$MANUAL_REVIEW_DIR"
+        mv "$TRIAGE_DIR/$FILENAME" "$MANUAL_REVIEW_DIR/"
+        echo "FILE: $FILENAME"
+        echo "SUMMARY: Sensitive file detected - not sent to Claude for processing"
+        echo "FILED TO: manual-review (requires manual categorization)"
+        exit 0
+    fi
+done
 
 # Find Claude
 if command -v claude &> /dev/null; then
@@ -23,14 +53,31 @@ RESPONSE=$("$CLAUDE_PATH" -p "Process the file '$FILENAME' in the triage folder 
 
 Context:
 - Base directory: $BASE_DIR
-- Index file: $INDEX_FILE
-- Ignore folders: triage, .filemanager
+- Root index: $ROOT_INDEX
+- Ignore folders: triage, .filemanager, manual-review
 
-Steps:
-1. List existing category folders in '$BASE_DIR' (exclude 'triage' and '.filemanager')
-2. Read and understand the file
-3. Move it to the best matching folder (or create a new appropriately-named one)
-4. Update the index at '$INDEX_FILE'
+INDEX STRUCTURE:
+1. Root index ($ROOT_INDEX) - High-level overview with:
+   - Folder descriptions (### foldername/ + one-line description + file count)
+   - Recent Activity table (last 10 items: Date, Action, File, Folder)
+   - Total file count at bottom
+
+2. Per-folder index ([folder]/_index.md) - Detailed file list with:
+   - # foldername/ header
+   - One-line folder description
+   - ## Files section with table: File | Summary
+   - Can have sub-sections for grouping related files
+
+STEPS:
+1. Read existing folder _index.md files to understand categories
+2. Read and understand the new file
+3. Choose the best folder (or create new one with _index.md)
+4. Move file to that folder
+5. Update the folder's _index.md (add row to Files table)
+6. Update root index:
+   - Increment folder file count
+   - Add to Recent Activity (newest at top, keep max 10)
+   - Update total count
 
 CRITICAL: Your final output must be ONLY plain text in this exact format (no markdown):
 

@@ -2,6 +2,7 @@
 .filemanager/index.md
 triage/*
 !triage/.gitkeep
+manual-review/
 
 # Category folders (user files)
 finance/
